@@ -1,56 +1,68 @@
 'use client'
 
 import { insertMaskInPhone } from "@/functions/phoneMask"
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 
 export default function Form(){
-    const [form, setForm] = useState({
-        name: "",
-        email: "",
-        company: "",
-        phone: ""
-    })
+
+    const initialFormState = {
+        name: {value: '', wasTouched: false},
+        email: {value: '', wasTouched: false},
+        company: {value: '', wasTouched: false},
+        phone: {value: '', wasTouched: false}
+    } 
+
+    const [form, setForm] = useState(initialFormState)
 
     const [emptyValue, setEmptyValue] = useState(false)
     const [validEmail, setValidEmail] = useState(false)
     const [formValid, setFormValid] = useState(false)
-    const [formSubmitted, setFormSubmitted] = useState(false)
+
     const [phoneMask, setPhoneMask] = useState("")
+
+    const formRef = useRef<HTMLFormElement>(null)
+
     const [formMessage, setFormMessage] = useState("")
 
     useEffect(() => {
-        if (formSubmitted) {
-            const emptyValues = Object.values(form).some(obj => obj === "")
-            setEmptyValue(emptyValues)
 
-            const emailPattern = /[a-z]+@[a-z]+\.com(\.br)*/
-            const isEmailValid = emailPattern.test(form.email.toLowerCase())
-            setValidEmail(isEmailValid)
+        const hasEmptyValues = Object.values(form).some(obj => obj.value === "")
+        setEmptyValue(hasEmptyValues)
 
-            const isFormValid = !emptyValues && isEmailValid
-            setFormValid(isFormValid)
-        }
-    }, [form, formSubmitted])
+        const emailPattern = /[a-z]+@[a-z]+\.com(\.br)*/
+        const isEmailValid = emailPattern.test(form.email.value.toLowerCase())
+        setValidEmail(isEmailValid)
+
+        const isFormValid = !hasEmptyValues && isEmailValid
+        setFormValid(isFormValid)
+    }, [form]);
 
     const handleInputChange = (event: React.ChangeEvent<HTMLInputElement>) => {
         const { name, value } = event.target
         setForm(prevState => ({
             ...prevState,
-            [name]: value
-        }))
+            [name]: {value: value, wasTouched: true}
+        }));
     }
 
     const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
-        event.preventDefault();
-        setFormSubmitted(true);
-
+        event.preventDefault()
         if (formValid) {
             try {
                 fetch("http://localhost:3000", {method: "POST",body: JSON.stringify(form)})
                 setFormMessage("Dados enviados com sucesso!")
+
                 setTimeout(() => {
                     setFormMessage("")
-                }, 8000)
+                }, 5000);
+
+                setTimeout(() => {
+                    if (formRef.current) {
+                        formRef.current.reset()
+                        setForm(initialFormState)
+                        setPhoneMask("")
+                    }
+                }, 200)
 
             } catch (error) {
                 console.log(error)
@@ -64,15 +76,16 @@ export default function Form(){
         setPhoneMask(formattedPhone)
         handleInputChange(event)
     }
-    
+
     return(
         <div className="bg-white rounded-xl p-6 lg:p-12 w-full">
             <p className=" text-indigo-700 text-2xl font-bold">Informe seus dados <br className="hidden lg:block"/> para falar com um especialista:</p>
             <form 
                 className="mt-12"
-                onSubmit={(e) => {handleSubmit(e)}}
+                onSubmit={handleSubmit}
+                ref={formRef}
             >
-                <div className="flex items-center justify-between mb-5">
+                <div className="flex items-center justify-between mb-2">
                     <label 
                         className=" text-indigo-700 font-medium max-w-[10%] text-lg" 
                         htmlFor="name"
@@ -88,10 +101,10 @@ export default function Form(){
 /*                             required */
                             onChange={(e) => handleInputChange(e)}
                         />
-                        {emptyValue && form["name"] == "" ? <span className="block text-red-600 text-end">O campo nome precisa ser preenchido</span> : ""}
+                        {emptyValue && form.name.wasTouched && form.name.value == "" ? <span className="block text-red-600 text-end text-sm h-4">O campo nome precisa ser preenchido</span> : <span className="block h-4"></span>}
                     </div>
                 </div>
-                <div className="flex items-center justify-between mb-5">
+                <div className="flex items-center justify-between mb-2">
                     <label 
                         className=" text-indigo-700 font-medium max-w-[10%] text-lg" 
                         htmlFor="email"
@@ -107,12 +120,11 @@ export default function Form(){
 /*                             required */
                             onChange={(e) => handleInputChange(e)}
                         />
-                        {emptyValue && form["email"] == "" ? <span className="block text-red-600 text-end">O campo email precisa ser preenchido</span> : ""}
-                        {!validEmail && form["email"] !== "" ? <span className="block text-red-600 text-end">Digite um email válido</span> : ""}
+                        {!validEmail && form.email.wasTouched && form.email.value !== "" ? <span className="block text-red-600 text-end text-sm h-4">Digite um email válido</span> : <span className="block h-4"></span>}
                     </div>
 
                 </div>
-                <div className="flex items-center justify-between mb-5">
+                <div className="flex items-center justify-between mb-2">
                     <label 
                         className=" text-indigo-700 font-medium max-w-[10%] text-lg" 
                         htmlFor="company"
@@ -128,10 +140,10 @@ export default function Form(){
 /*                             required */
                             onChange={(e) => handleInputChange(e)}
                         />
-                        {emptyValue && form["company"] == "" ? <span className="block text-red-600 text-end">O campo empresa precisa ser preenchido</span> : ""}
+                        {emptyValue && form.company.wasTouched && form.company.value == "" ? <span className="block text-red-600 text-end text-sm h-4">O campo empresa precisa ser preenchido</span> : <span className="block h-4"></span>}
                     </div>
                 </div>
-                <div className="flex items-center justify-between mb-5">
+                <div className="flex items-center justify-between mb-2">
                     <label 
                         className=" text-indigo-700 font-medium max-w-[10%] text-lg" 
                         htmlFor="phone"
@@ -149,16 +161,16 @@ export default function Form(){
                                 handlePhoneChange(e);
                                 handleInputChange(e);
                             }}
-                            minLength={11}
-                            maxLength={11}
+                            minLength={15}
+                            maxLength={15}
                         />
-                        {emptyValue && form["phone"] == ""? <span className="block text-red-600 text-end">O campo telefone precisa ser preenchido</span> : ""}
+                        {emptyValue && form.phone.wasTouched && form.phone.value == ""? <span className="block text-red-600 text-end text-sm h-4">O campo telefone precisa ser preenchido</span> : <span className="block h-4"></span>}
                     </div>
                 </div>
                 <button
-                    className={`${formValid ? "bg-indigo-700" : "bg-second-blue"} rounded-lg p-4 text-white font-medium text-lg lg:text-2xl w-full uppercase mt-6 ${formValid ? "" : "cursor-not-allowed"}`}
+                    className={`${formValid ? "bg-indigo-700" : "bg-second-blue"} rounded-lg p-4 text-white font-medium text-lg lg:text-2xl w-full uppercase mt-6`}
                     type="submit"
-                    style={{ cursor: formValid ? "pointer" : "not-allowed" }}
+                    disabled={!formValid}
                 >
                     Fale com um especialista
                 </button>
